@@ -13,26 +13,22 @@ body {
 html,
 body {
     margin: 0;
+    padding: 0;
     min-height: 100dvh;
-}
-
-.header {
-    padding-top: env(safe-area-inset-top);
+    width: 100%;
 }
 
 .phone {
-    width: 393px;
-    height: 852px;
+    width: 100%;
+    min-height: 100dvh;
     background: white;
-    border-radius: 55px;
-    overflow: hidden;
     display: flex;
     flex-direction: column;
     color: #111;
 }
 
 .header {
-    padding: 5px 5px;
+    padding-top: env(safe-area-inset-top);
     background: #0f766e;
     color: white;
     flex-shrink: 0;
@@ -121,4 +117,13 @@ button{
 .container {
     max-width: 800px;
     margin: auto;
+}
+
+@media (min-width: 600px) {
+    .phone {
+        width: 393px;
+        height: 852px;
+        border-radius: 55px;
+        overflow: hidden;
+    }
 }

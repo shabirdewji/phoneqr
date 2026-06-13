@@ -2,10 +2,6 @@ from flask import Flask, render_template, jsonify
 import sqlite3
 import os
 
-
-
-
-
 app = Flask(__name__)
 #DB = "/Users/shabirdewji/python/phoneqr/quran.db"
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))

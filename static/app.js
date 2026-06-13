@@ -21,7 +21,7 @@ async function loadSurah()
     ayahs.forEach(a => {
         html += `
         <div class="ayah" id="ayah-${a.surah}-${a.ayah}">
-            <b>${a.ayah}</b><br>
+            <b>${a.ayah}</b>.
             ${a.text}
         </div>`;
     });
