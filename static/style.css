@@ -7,12 +7,18 @@ body {
     height: 100vh;
     font-family: Arial, sans-serif;
 }
-html, body {
+
+
+html,
+body {
     margin: 0;
-    padding: 0;
-    width: 100%;
     min-height: 100dvh;
 }
+
+.header {
+    padding-top: env(safe-area-inset-top);
+}
+
 .phone {
     width: 393px;
     height: 852px;
