@@ -3,6 +3,16 @@ let currentIndex = 0;
 let playing = false;
 let stopRequested = false;
 
+let settings = {
+    playArabic: true,
+    playEnglish: true,
+    reciter: "Alafasy_128kbps"
+};
+
+window.onload = () => {
+    loadSettings();
+    loadSurah();
+};
 
 async function loadSurah()
 {
@@ -35,52 +45,49 @@ document.getElementById("surahSelect")
 window.onload = loadSurah;
 
 
-function speakNext(){
-    if(!playing) return;
-    if(currentIndex >= ayahs.length){
-        document.getElementById("status")
-                .innerText = "Finished";
-        playing = false;
-        return;
-    }
+// function speakNext(){
+//     if(!playing) return;
+//     if(currentIndex >= ayahs.length){
+//         document.getElementById("status")
+//                 .innerText = "Finished";
+//         playing = false;
+//         return;
+//     }
 
-    let ayah = ayahs[currentIndex];
+//     let ayah = ayahs[currentIndex];
 
-    document.querySelectorAll(".ayah")
-            .forEach(a => a.classList.remove("active"));
+//     document.querySelectorAll(".ayah")
+//             .forEach(a => a.classList.remove("active"));
 
-    let row =
-        document.getElementById(
-            `ayah-${ayah.ayah}`
-        );
+//     let row = document.getElementById(`ayah-${ayah.surah}-${ayah.ayah}`)
 
-    row.classList.add("active");
+//     row.classList.add("active");
 
-    row.scrollIntoView({
-        behavior:"smooth",
-        block:"center"
-    });
+//     row.scrollIntoView({
+//         behavior:"smooth",
+//         block:"center"
+//     });
 
-    document.getElementById("status")
-            .innerText =
-            `Reading Ayah ${ayah.ayah}`;
+//     document.getElementById("status")
+//             .innerText =
+//             `Reading Ayah ${ayah.ayah}`;
 
-    let utter =
-        new SpeechSynthesisUtterance(
-            ayah.text
-        );
+//     let utter =
+//         new SpeechSynthesisUtterance(
+//             ayah.text
+//         );
 
-    utter.rate = 0.95;
-    utter.pitch = 1;
+//     utter.rate = 0.95;
+//     utter.pitch = 1;
 
-    utter.onend = function(){
+//     utter.onend = function(){
 
-        currentIndex++;
-        speakNext();
-    };
+//         currentIndex++;
+//         speakNext();
+//     };
 
-    speechSynthesis.speak(utter);
-}
+//     speechSynthesis.speak(utter);
+// }
 
 
 
@@ -94,15 +101,15 @@ function buildId(surah, ayah)
 }
 
 
-function highlightAyah(surah, ayah)
+function highlightAyah(surah, ayahNumber)
 {
     document.querySelectorAll(".ayah")
         .forEach(a => a.classList.remove("active"));
 
-    const el = document.getElementById(`ayah-${surah}-${ayah}`);
+    const el = document.getElementById(`ayah-${surah}-${ayahNumber}`);
 
     if (!el) {
-        console.log("Highlight NOT FOUND:", surah, ayah);
+        console.log("Highlight NOT FOUND:", surah, ayahNumber);
         return;
     }
 
@@ -207,8 +214,10 @@ async function playArabicAudio(id, surah, ayah)
 
 async function playAyah(ayah)
 {
-    const playArabic = document.getElementById("playArabic")?.checked;
-    const playEnglish = document.getElementById("playEnglish")?.checked;
+
+    const playArabic = settings.playArabic;
+    const playEnglish = settings.playEnglish;
+    const reciter = settings.reciter;
 
     const id = buildId(ayah.surah, ayah.ayah);
 
@@ -216,10 +225,13 @@ async function playAyah(ayah)
     console.log("Arabic:", playArabic, "English:", playEnglish);
     console.log("Ayah:", ayah);
 
+    speechSynthesis.cancel();
+
+    highlightAyah(ayah.surah, ayah.ayah); // 🔥 move here FIRST
+
     if (playArabic)
     {
-       await playArabicAudio(id, ayah.surah, ayah.ayah);
-        if (stopRequested) return;
+    await playArabicAudio(id, ayah.surah, ayah.ayah);
     }
 
     console.log("AFTER ARABIC");
@@ -256,4 +268,34 @@ function stopReading()
     audio.currentTime = 0;
 
     speechSynthesis.cancel();
+}
+
+function loadSettings() {
+    const saved = localStorage.getItem("quranSettings");
+    if (saved) {
+        settings = JSON.parse(saved);
+    }
+}
+
+function saveSettings() {
+    settings.playArabic = document.getElementById("setArabic").checked;
+    settings.playEnglish = document.getElementById("setEnglish").checked;
+    settings.reciter = document.getElementById("setReciter").value;
+
+    localStorage.setItem("quranSettings", JSON.stringify(settings));
+
+    closeSettings();
+}
+
+function openSettings() {
+    document.getElementById("settingsModal").classList.remove("hidden");
+
+    // sync UI with current settings
+    document.getElementById("setArabic").checked = settings.playArabic;
+    document.getElementById("setEnglish").checked = settings.playEnglish;
+    document.getElementById("setReciter").value = settings.reciter;
+}
+
+function closeSettings() {
+    document.getElementById("settingsModal").classList.add("hidden");
 }

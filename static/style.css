@@ -119,6 +119,107 @@ button{
     margin: auto;
 }
 
+.modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0,0,0,0.6);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.modal-content {
+    background: white;
+    padding: 20px;
+    border-radius: 10px;
+    width: 300px;
+}
+
+.hidden {
+    display: none;
+}
+
+.settings-btn {
+    font-size: 26px;
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    border: none;
+    background: #222;
+    color: white;
+    cursor: pointer;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.bottom-bar {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+
+    display: flex;
+    justify-content: space-around;
+    align-items: center;
+
+    padding: 12px 0;
+    background: rgba(20, 20, 20, 0.95);
+    backdrop-filter: blur(10px);
+
+    border-top: 1px solid rgba(255,255,255,0.1);
+
+    z-index: 9999;
+}
+
+/* base button style */
+.bar-btn {
+    width: 52px;
+    height: 52px;
+    border-radius: 50%;
+
+    border: none;
+    cursor: pointer;
+
+    font-size: 20px;
+    color: white;
+
+    background: #333;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    transition: transform 0.15s ease, background 0.2s ease;
+}
+
+.bar-btn:active {
+    transform: scale(0.92);
+}
+
+/* play button (optional emphasis) */
+.bar-btn:first-child {
+    background: #1f7a1f;
+}
+
+/* stop button */
+.bar-btn.danger {
+    background: #a52a2a;
+}
+
+/* settings button */
+.bar-btn.settings {
+    background: #444;
+}
+
+/* prevent content being hidden behind bar */
+body {
+    padding-bottom: 90px;
+}
+
 @media (min-width: 600px) {
     .phone {
         width: 393px;
