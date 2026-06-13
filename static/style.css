@@ -80,12 +80,31 @@ button{
     padding: 10px;
     border-bottom: 1px solid #ddd;
     color: #111;
-    font-size: 18px;
+    font-size: 20px;
+    line-height: 1.8;
+}
+
+.ayah {
+    font-size: clamp(18px, 2.2vw, 26px);
 }
 
 .active{
     background:#fff3b0;
 }
+
+.ayah b {
+    font-size: 16px;
+    color: #aaa;
+}
+
+#status {
+    font-size: 14px;
+}
+
+.bar-btn {
+    font-size: 22px;
+}
+
 
 .options {
     margin-top: 15px;
@@ -218,6 +237,25 @@ button{
 /* prevent content being hidden behind bar */
 body {
     padding-bottom: 90px;
+}
+
+#fontWidget {
+    position: fixed;
+    right: 16px;
+    bottom: 120px;
+
+    background: rgba(30,30,30,0.9);
+    color: white;
+
+    padding: 10px;
+    border-radius: 20px;
+
+    display: flex;
+    align-items: center;
+    gap: 8px;
+
+    z-index: 9999;
+    cursor: grab;
 }
 
 @media (min-width: 600px) {

@@ -6,9 +6,9 @@ let stopRequested = false;
 let settings = {
     playArabic: true,
     playEnglish: true,
-    reciter: "Alafasy_128kbps"
+    reciter: "Alafasy_128kbps",
+    fontSize: 20
 };
-
 window.onload = () => {
     loadSettings();
     loadSurah();
@@ -299,3 +299,90 @@ function openSettings() {
 function closeSettings() {
     document.getElementById("settingsModal").classList.add("hidden");
 }
+
+function loadSettings() {
+    const saved = localStorage.getItem("quranSettings");
+    if (saved) {
+        settings = JSON.parse(saved);
+    }
+
+    applySettings();
+}
+
+function saveSettings() {
+    settings.playArabic = document.getElementById("setArabic").checked;
+    settings.playEnglish = document.getElementById("setEnglish").checked;
+    settings.reciter = document.getElementById("setReciter").value;
+    settings.fontSize = document.getElementById("setFontSize").value;
+
+    localStorage.setItem("quranSettings", JSON.stringify(settings));
+
+    applySettings();
+    closeSettings();
+}
+
+function applySettings() {
+
+    document.querySelectorAll(".ayah").forEach(el => {
+        el.style.fontSize = settings.fontSize + "px";
+    });
+
+    const label = document.getElementById("fontSizeLabel");
+    if (label) label.innerText = settings.fontSize + "px";
+}
+
+function openSettings() {
+    document.getElementById("settingsModal").classList.remove("hidden");
+
+    document.getElementById("setArabic").checked = settings.playArabic;
+    document.getElementById("setEnglish").checked = settings.playEnglish;
+    document.getElementById("setReciter").value = settings.reciter;
+
+    const slider = document.getElementById("setFontSize");
+    slider.value = settings.fontSize;
+
+    document.getElementById("fontSizeLabel").innerText = settings.fontSize + "px";
+}
+
+document.getElementById("setFontSize").addEventListener("input", (e) => {
+    const size = e.target.value;
+
+    document.querySelectorAll(".ayah").forEach(el => {
+        el.style.fontSize = size + "px";
+    });
+
+    document.getElementById("fontSizeLabel").innerText = size + "px";
+});
+
+const widget = document.getElementById("fontWidget");
+
+let isDragging = false;
+let offsetX, offsetY;
+
+widget.addEventListener("mousedown", (e) => {
+    isDragging = true;
+    offsetX = e.clientX - widget.offsetLeft;
+    offsetY = e.clientY - widget.offsetTop;
+});
+
+document.addEventListener("mousemove", (e) => {
+    if (!isDragging) return;
+
+    widget.style.left = (e.clientX - offsetX) + "px";
+    widget.style.top = (e.clientY - offsetY) + "px";
+});
+
+document.addEventListener("mouseup", () => {
+    isDragging = false;
+});
+
+document.getElementById("quickFont").value = settings.fontSize;
+
+document.getElementById("quickFont").addEventListener("input", (e) => {
+    settings.fontSize = e.target.value;
+
+    document.querySelectorAll(".ayah").forEach(el => {
+        el.style.fontSize = settings.fontSize + "px";
+    });
+});
+
