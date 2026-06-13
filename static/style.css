@@ -6,9 +6,13 @@ body {
     align-items: flex-start;  /* 🔥 important fix */
     height: 100vh;
     font-family: Arial, sans-serif;
-    padding-top: 20px;
 }
-
+html, body {
+    margin: 0;
+    padding: 0;
+    width: 100%;
+    min-height: 100dvh;
+}
 .phone {
     width: 393px;
     height: 852px;
@@ -106,4 +110,8 @@ button{
 .controls button {
     flex: 1;
     margin-top: 0; /* override your global button margin */
+}
+.container {
+    max-width: 800px;
+    margin: auto;
 }
