@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Quran Audio Reader</title>
+
+<link rel="stylesheet" href="{{ url_for('static', filename='/style.css') }}">
+<link rel="icon" href="{{ url_for('static', filename='favicon.ico') }}">
+<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0/dist/css/select2.min.css" rel="stylesheet" />
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0/dist/js/select2.min.js"></script>
+
+</head>
+
+<body>
+
+<div class="phone">
+    <div class="header">
+        <h2>Quran Reader</h2>
+    </div>
+    <div class="content">
+        <select id="surahSelect">
+            {% for row in surahs %}
+            <option value="{{ row.surah }}">
+                {{ row.surah }} - {{ surah_names[row.surah] }}
+            </option>
+            {% endfor %}
+        </select>
+
+        <div class="controls">
+            <button class="play" onclick="playSurah()">
+                ▶ Play Surah
+            </button>
+
+            <button class="stop" onclick="stopReading()">
+                ■ Stop
+            </button>
+        </div>
+
+        <div class="options">
+            <label class="checkbox">
+                <input type="checkbox" id="playArabic" checked>
+                <span>Arabic</span>
+            </label>
+
+            <label class="checkbox">
+                <input type="checkbox" id="playEnglish" checked>
+                <span>English</span>
+            </label>
+        </div>
+
+        <select id="reciter">
+            <option value="Alafasy_128kbps">
+                Alafasy
+            </option>
+            <option value="Abdul_Basit_Murattal_128kbps">
+                Abdul Basit
+            </option>
+            <option value="Husary_128kbps">
+                Husary
+            </option>
+            <option value="Minshawy_Murattal_128kbps">
+                Minshawy
+            </option>
+        </select>
+
+        <div id="status"></div>
+        <div id="ayahs"></div>
+    </div>
+
+</div>
+
+<audio id="audioPlayer"></audio>
+
+
+
+<script src="{{ url_for('static', filename='/app.js') }}"></script>
+
+</body>
+</html>

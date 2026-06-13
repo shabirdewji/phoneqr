@@ -1,0 +1,109 @@
+body {
+    margin: 0;
+    background: #111;
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;  /* 🔥 important fix */
+    height: 100vh;
+    font-family: Arial, sans-serif;
+    padding-top: 20px;
+}
+
+.phone {
+    width: 393px;
+    height: 852px;
+    background: white;
+    border-radius: 55px;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    color: #111;
+}
+
+.header {
+    padding: 5px 5px;
+    background: #0f766e;
+    color: white;
+    flex-shrink: 0;
+}
+
+.content {
+    flex: 1;
+    overflow: auto;
+    padding: 15px;
+}
+
+select{
+    width:100%;
+    padding:12px;
+    font-size:18px;
+}
+
+button{
+    width:100%;
+    padding:14px;
+    margin-top:10px;
+    font-size:18px;
+    border:none;
+    border-radius:12px;
+    cursor:pointer;
+}
+
+.play{
+    background:#16a34a;
+    color:white;
+}
+
+.pause {
+    background: #f59e0b;
+    color: white;
+}
+
+.stop{
+    background:#dc2626;
+    color:white;
+}
+
+#status{
+    margin-top:15px;
+    font-weight:bold;
+}
+
+.ayah {
+    padding: 10px;
+    border-bottom: 1px solid #ddd;
+    color: #111;
+    font-size: 18px;
+}
+
+.active{
+    background:#fff3b0;
+}
+
+.options {
+    margin-top: 15px;
+    display: flex;
+    flex-direction: row;   /* <-- this is the key change */
+    gap: 20px;
+    align-items: center;
+}
+
+.checkbox {
+    font-size: 16px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: #111;
+    font-weight: 500;
+}
+
+.controls {
+    display: flex;
+    gap: 10px;
+    margin-top: 10px;
+}
+
+.controls button {
+    flex: 1;
+    margin-top: 0; /* override your global button margin */
+}
