@@ -10,13 +10,14 @@ let settings = {
     fontSize: 20
 };
 
-
-
 window.onload = () => {
     loadSettings();
     loadSurah();
 };
 
+document.body.addEventListener("click", () => {
+    speechSynthesis.resume();
+}, { once: true });
 
 
 async function loadSurah()
@@ -46,54 +47,6 @@ async function loadSurah()
 
 document.getElementById("surahSelect")
         .addEventListener("change", loadSurah);
-
-
-
-
-// function speakNext(){
-//     if(!playing) return;
-//     if(currentIndex >= ayahs.length){
-//         document.getElementById("status")
-//                 .innerText = "Finished";
-//         playing = false;
-//         return;
-//     }
-
-//     let ayah = ayahs[currentIndex];
-
-//     document.querySelectorAll(".ayah")
-//             .forEach(a => a.classList.remove("active"));
-
-//     let row = document.getElementById(`ayah-${ayah.surah}-${ayah.ayah}`)
-
-//     row.classList.add("active");
-
-//     row.scrollIntoView({
-//         behavior:"smooth",
-//         block:"center"
-//     });
-
-//     document.getElementById("status")
-//             .innerText =
-//             `Reading Ayah ${ayah.ayah}`;
-
-//     let utter =
-//         new SpeechSynthesisUtterance(
-//             ayah.text
-//         );
-
-//     utter.rate = 0.95;
-//     utter.pitch = 1;
-
-//     utter.onend = function(){
-
-//         currentIndex++;
-//         speakNext();
-//     };
-
-//     speechSynthesis.speak(utter);
-// }
-
 
 
 
@@ -129,49 +82,42 @@ function highlightAyah(surah, ayahNumber)
 
 function speakEnglish(text)
 {
-    return new Promise(resolve => {
+    return new Promise((resolve) => {
 
-        speechSynthesis.cancel(); // 🔥 IMPORTANT RESET
+        const speak = () => {
 
-        let utter = new SpeechSynthesisUtterance(text);
-        utter.lang = "en-US";
+            const utter = new SpeechSynthesisUtterance(text);
 
-        let finished = false;
+            utter.lang = "en-US";
+            utter.rate = 0.95;
+            utter.pitch = 1;
 
-        const done = () => {
-            if (finished) return;
-            finished = true;
-            resolve();
+            utter.onend = () => resolve();
+            utter.onerror = () => resolve();
+
+            speechSynthesis.speak(utter);
         };
 
-        utter.onend = () => {
-            console.log("ENGLISH ONEND");
-            done();
-        };
+        // 🔥 iOS fix: wait for voices to load
+        let voices = speechSynthesis.getVoices();
 
-        utter.onerror = (e) => {
-            console.log("ENGLISH ERROR", e);
-            done();
-        };
-
-        speechSynthesis.speak(utter);
-
-        // 🔥 SAFETY NET (Chrome bug workaround)
-        setTimeout(() => {
-            if (!finished) {
-                console.warn("ENGLISH TIMEOUT FALLBACK");
-                done();
-            }
-        }, 8000);
+        if (voices.length === 0) {
+            speechSynthesis.onvoiceschanged = () => {
+                speak();
+            };
+        } else {
+            speak();
+        }
     });
 }
+
 
 async function playArabicAudio(id, surah, ayah)
 {
     const audio = document.getElementById("audioPlayer");
 
     const reciter = settings.reciter;
-    
+
     const url = `https://everyayah.com/data/${reciter}/${id}.mp3`;
 
     return new Promise((resolve) => {
@@ -231,8 +177,6 @@ async function playAyah(ayah)
     console.log("Arabic:", playArabic, "English:", playEnglish);
     console.log("Ayah:", ayah);
 
-    speechSynthesis.cancel();
-
     highlightAyah(ayah.surah, ayah.ayah); // 🔥 move here FIRST
 
     if (playArabic)
@@ -273,7 +217,7 @@ function stopReading()
     audio.pause();
     audio.currentTime = 0;
 
-    speechSynthesis.cancel();
+    speechSynthesis.cancel(); // only here
 }
 
 function loadSettings() {
