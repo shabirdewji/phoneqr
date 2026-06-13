@@ -9,10 +9,15 @@ let settings = {
     reciter: "Alafasy_128kbps",
     fontSize: 20
 };
+
+
+
 window.onload = () => {
     loadSettings();
     loadSurah();
 };
+
+
 
 async function loadSurah()
 {
@@ -42,7 +47,7 @@ async function loadSurah()
 document.getElementById("surahSelect")
         .addEventListener("change", loadSurah);
 
-window.onload = loadSurah;
+
 
 
 // function speakNext(){
@@ -164,8 +169,9 @@ function speakEnglish(text)
 async function playArabicAudio(id, surah, ayah)
 {
     const audio = document.getElementById("audioPlayer");
-    const reciter = document.getElementById("reciter").value;
 
+    const reciter = settings.reciter;
+    
     const url = `https://everyayah.com/data/${reciter}/${id}.mp3`;
 
     return new Promise((resolve) => {
@@ -277,15 +283,6 @@ function loadSettings() {
     }
 }
 
-function saveSettings() {
-    settings.playArabic = document.getElementById("setArabic").checked;
-    settings.playEnglish = document.getElementById("setEnglish").checked;
-    settings.reciter = document.getElementById("setReciter").value;
-
-    localStorage.setItem("quranSettings", JSON.stringify(settings));
-
-    closeSettings();
-}
 
 function openSettings() {
     document.getElementById("settingsModal").classList.remove("hidden");
@@ -344,45 +341,49 @@ function openSettings() {
     document.getElementById("fontSizeLabel").innerText = settings.fontSize + "px";
 }
 
-document.getElementById("setFontSize").addEventListener("input", (e) => {
-    const size = e.target.value;
+window.addEventListener("DOMContentLoaded", () => {
 
-    document.querySelectorAll(".ayah").forEach(el => {
-        el.style.fontSize = size + "px";
+    document.getElementById("setFontSize").addEventListener("input", (e) => {
+        const size = e.target.value;
+
+        document.querySelectorAll(".ayah").forEach(el => {
+            el.style.fontSize = size + "px";
+        });
+
+        document.getElementById("fontSizeLabel").innerText =
+            size + "px";
     });
 
-    document.getElementById("fontSizeLabel").innerText = size + "px";
-});
+    const widget = document.getElementById("fontWidget");
 
-const widget = document.getElementById("fontWidget");
+    let isDragging = false;
+    let offsetX, offsetY;
 
-let isDragging = false;
-let offsetX, offsetY;
-
-widget.addEventListener("mousedown", (e) => {
-    isDragging = true;
-    offsetX = e.clientX - widget.offsetLeft;
-    offsetY = e.clientY - widget.offsetTop;
-});
-
-document.addEventListener("mousemove", (e) => {
-    if (!isDragging) return;
-
-    widget.style.left = (e.clientX - offsetX) + "px";
-    widget.style.top = (e.clientY - offsetY) + "px";
-});
-
-document.addEventListener("mouseup", () => {
-    isDragging = false;
-});
-
-document.getElementById("quickFont").value = settings.fontSize;
-
-document.getElementById("quickFont").addEventListener("input", (e) => {
-    settings.fontSize = e.target.value;
-
-    document.querySelectorAll(".ayah").forEach(el => {
-        el.style.fontSize = settings.fontSize + "px";
+    widget.addEventListener("mousedown", (e) => {
+        isDragging = true;
+        offsetX = e.clientX - widget.offsetLeft;
+        offsetY = e.clientY - widget.offsetTop;
     });
-});
 
+    document.addEventListener("mousemove", (e) => {
+        if (!isDragging) return;
+
+        widget.style.left = (e.clientX - offsetX) + "px";
+        widget.style.top = (e.clientY - offsetY) + "px";
+    });
+
+    document.addEventListener("mouseup", () => {
+        isDragging = false;
+    });
+
+    document.getElementById("quickFont").value = settings.fontSize;
+
+    document.getElementById("quickFont").addEventListener("input", (e) => {
+        settings.fontSize = e.target.value;
+
+        document.querySelectorAll(".ayah").forEach(el => {
+            el.style.fontSize = settings.fontSize + "px";
+        });
+    });
+
+});
