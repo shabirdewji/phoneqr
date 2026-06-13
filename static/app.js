@@ -115,7 +115,6 @@ function speakEnglish(text)
 async function playArabicAudio(id, surah, ayah)
 {
     const audio = document.getElementById("audioPlayer");
-
     const reciter = settings.reciter;
 
     const url = `https://everyayah.com/data/${reciter}/${id}.mp3`;
@@ -124,45 +123,52 @@ async function playArabicAudio(id, surah, ayah)
 
         let finished = false;
 
-        const cleanup = () => {
+        const finish = () => {
+            if (finished) return;
+            finished = true;
+
+            audio.pause();
             audio.onended = null;
             audio.onerror = null;
-            audio.oncanplaythrough = null;
+
+            resolve();
         };
 
+        // 🔥 HARD SAFETY: never rely on canplaythrough
         audio.pause();
-        audio.currentTime = 0;
         audio.src = url;
+        audio.currentTime = 0;
 
-        audio.oncanplaythrough = async () => {
-            try {
-                await audio.play();
-            } catch (e) {
-                console.error("Audio play blocked:", e);
-                finish(); // continue anyway
+        const tryPlay = () => {
+            const playPromise = audio.play();
+
+            if (playPromise !== undefined) {
+                playPromise
+                    .then(() => {
+                        // normal flow
+                    })
+                    .catch((err) => {
+                        console.warn("Play blocked:", err);
+                        finish(); // DON'T freeze loop
+                    });
             }
         };
 
         audio.onended = finish;
         audio.onerror = finish;
 
-        function finish() {
-            if (finished) return;
-            finished = true;
-            cleanup();
-            resolve();
-        }
+        // 🔥 iOS FIX: play immediately (no canplaythrough)
+        tryPlay();
 
-        // 🔥 SAFETY NET (prevents infinite lock)
+        // 🔥 fallback so it NEVER freezes loop
         setTimeout(() => {
             if (!finished) {
-                console.warn("Audio timeout fallback triggered");
+                console.warn("Audio timeout fallback");
                 finish();
             }
-        }, 15000);
+        }, 20000);
     });
 }
-
 
 async function playAyah(ayah)
 {
@@ -199,12 +205,15 @@ async function playSurah()
     stopRequested = false;
     currentIndex = 0;
 
+
+
     for (let i = 0; i < ayahs.length; i++)
     {
         if (stopRequested) break;
 
         currentIndex = i;
 
+        console.log("Playing ayah index:", i);
         await playAyah(ayahs[i]);
     }
 }
