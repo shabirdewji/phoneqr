@@ -1,8 +1,16 @@
 from flask import Flask, render_template, jsonify
 import sqlite3
+import os
+
+
+
+
 
 app = Flask(__name__)
-DB = "/Users/shabirdewji/python/phoneqr/quran.db"
+#DB = "/Users/shabirdewji/python/phoneqr/quran.db"
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+DB = os.path.join(BASE_DIR, "phone.db")
+
 SURAH_NAMES = {
     1: "Al-Fatiha",
     2: "Al-Baqarah",
