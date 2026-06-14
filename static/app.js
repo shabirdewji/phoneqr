@@ -152,6 +152,28 @@ function playEnglishSafe(text)
         {
             logToServer("CALLING SPEAK");
             speechSynthesis.speak(utter);
+
+
+
+            setTimeout(() => {
+                logToServer(
+                    "after speak paused=" +
+                    speechSynthesis.paused +
+                    " speaking=" +
+                    speechSynthesis.speaking +
+                    " pending=" +
+                    speechSynthesis.pending
+                );
+            }, 1000);
+
+
+
+            logToServer("voices=" + speechSynthesis.getVoices().length);
+            logToServer(
+                        "paused=" + speechSynthesis.paused +
+                        " speaking=" + speechSynthesis.speaking +
+                        " pending=" + speechSynthesis.pending
+                    );
         }
         catch(e)
         {
