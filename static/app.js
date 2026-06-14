@@ -172,30 +172,28 @@ async function playArabicAudio(id, surah, ayah)
 
 async function playAyah(ayah)
 {
-
     const playArabic = settings.playArabic;
     const playEnglish = settings.playEnglish;
-    const reciter = settings.reciter;
 
     const id = buildId(ayah.surah, ayah.ayah);
 
     console.log("START AYAH", ayah.ayah);
-    console.log("Arabic:", playArabic, "English:", playEnglish);
-    console.log("Ayah:", ayah);
 
-    highlightAyah(ayah.surah, ayah.ayah); // 🔥 move here FIRST
+    highlightAyah(ayah.surah, ayah.ayah);
 
     if (playArabic)
     {
-    await playArabicAudio(id, ayah.surah, ayah.ayah);
+        await playArabicAudio(id, ayah.surah, ayah.ayah);
     }
 
     console.log("AFTER ARABIC");
 
-    highlightAyah(ayah.surah, ayah.ayah);
+    // 🔥 IMPORTANT iOS FIX: small buffer delay
+    await new Promise(r => setTimeout(r, 250));
 
     if (playEnglish)
     {
+        console.log("START ENGLISH");
         await speakEnglish(ayah.text);
     }
 }
