@@ -1,6 +1,5 @@
 let ayahs = [];
 let currentIndex = 0;
-let playing = false;
 let stopRequested = false;
 
 let settings = {
@@ -19,6 +18,18 @@ document.body.addEventListener("click", () => {
     speechSynthesis.resume();
 }, { once: true });
 
+function sleep(ms)
+{
+    return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+function logToServer(msg) {
+    fetch("/log", {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify({ msg })
+    });
+}
 
 async function loadSurah()
 {
@@ -58,6 +69,21 @@ function buildId(surah, ayah)
     return s + a;
 }
 
+async function playSurah()
+{
+    stopRequested = false;
+
+    for (let i = 0; i < ayahs.length; i++)
+    {
+        if (stopRequested) break;
+
+        currentIndex = i;
+
+        await playAyahQueue(ayahs[i]);
+
+        await sleep(250);
+    }
+}
 
 function highlightAyah(surah, ayahNumber)
 {
@@ -79,99 +105,40 @@ function highlightAyah(surah, ayahNumber)
     });
 }
 
-
-function speakEnglish(text)
+async function speakEnglishSafe(text)
 {
     return new Promise((resolve) => {
 
-        const speak = () => {
+        speechSynthesis.cancel();
 
-            const utter = new SpeechSynthesisUtterance(text);
+        const utter = new SpeechSynthesisUtterance(text);
 
-            utter.lang = "en-US";
-            utter.rate = 0.95;
-            utter.pitch = 1;
+        utter.lang = "en-US";
+        utter.rate = 0.95;
 
-            utter.onend = () => resolve();
-            utter.onerror = () => resolve();
-
-            speechSynthesis.speak(utter);
-        };
-
-        // 🔥 iOS fix: wait for voices to load
-        let voices = speechSynthesis.getVoices();
-
-        if (voices.length === 0) {
-            speechSynthesis.onvoiceschanged = () => {
-                speak();
-            };
-        } else {
-            speak();
-        }
-    });
-}
-
-
-async function playArabicAudio(id, surah, ayah)
-{
-    const audio = document.getElementById("audioPlayer");
-    const reciter = settings.reciter;
-
-    const url = `https://everyayah.com/data/${reciter}/${id}.mp3`;
-
-    return new Promise((resolve) => {
-
-        let finished = false;
+        let done = false;
 
         const finish = () => {
-            if (finished) return;
-            finished = true;
-
-            audio.pause();
-            audio.onended = null;
-            audio.onerror = null;
-
+            if (done) return;
+            done = true;
             resolve();
         };
 
-        // 🔥 HARD SAFETY: never rely on canplaythrough
-        audio.pause();
-        audio.src = url;
-        audio.currentTime = 0;
+        utter.onend = finish;
+        utter.onerror = finish;
 
-        const tryPlay = () => {
-            const playPromise = audio.play();
+        speechSynthesis.speak(utter);
 
-            if (playPromise !== undefined) {
-                playPromise
-                    .then(() => {
-                        // normal flow
-                    })
-                    .catch((err) => {
-                        console.warn("Play blocked:", err);
-                        finish(); // DON'T freeze loop
-                    });
-            }
-        };
-
-        audio.onended = finish;
-        audio.onerror = finish;
-
-        // 🔥 iOS FIX: play immediately (no canplaythrough)
-        tryPlay();
-
-        // 🔥 fallback so it NEVER freezes loop
-        setTimeout(() => {
-            if (!finished) {
-                console.warn("Audio timeout fallback");
-                finish();
-            }
-        }, 20000);
+        // 🔥 iPhone safety fallback
+        setTimeout(finish, 6000);
     });
 }
 
-async function playAyah(ayah)
+
+async function playAyahQueue(ayah)
 {
+    logToServer("START AYAH " + ayah.ayah);
+
     const playArabic = settings.playArabic;
     const playEnglish = settings.playEnglish;
 
@@ -183,38 +150,55 @@ async function playAyah(ayah)
 
     if (playArabic)
     {
-        await playArabicAudio(id, ayah.surah, ayah.ayah);
+        await playArabicAudioSafe(id);
+        await sleep(200);
     }
 
     console.log("AFTER ARABIC");
 
-    // 🔥 IMPORTANT iOS FIX: small buffer delay
-    await new Promise(r => setTimeout(r, 250));
-
     if (playEnglish)
     {
-        console.log("START ENGLISH");
-        await speakEnglish(ayah.text);
+        await speakEnglishSafe(ayah.text);
+        await sleep(200);
     }
 }
 
-async function playSurah()
+async function playArabicAudioSafe(id)
 {
-    stopRequested = false;
-    currentIndex = 0;
+    const audio = document.getElementById("audioPlayer");
+    const reciter = settings.reciter;
 
+    const url = `https://everyayah.com/data/${reciter}/${id}.mp3`;
 
+    return new Promise((resolve) => {
 
-    for (let i = 0; i < ayahs.length; i++)
-    {
-        if (stopRequested) break;
+        let done = false;
 
-        currentIndex = i;
+        const finish = () => {
+            if (done) return;
+            done = true;
 
-        console.log("Playing ayah index:", i);
-        await playAyah(ayahs[i]);
-    }
+            audio.pause();
+            audio.src = "";
+            resolve();
+        };
+
+        // 🔥 reset
+        audio.pause();
+        audio.currentTime = 0;
+        audio.src = url;
+
+        // 🔥 DO NOT WAIT for events
+        audio.play().catch(() => finish());
+
+        // 🔥 safety timeout (critical for iPhone)
+        setTimeout(finish, 18000);
+
+        audio.onended = finish;
+        audio.onerror = finish;
+    });
 }
+
 
 function stopReading()
 {

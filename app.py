@@ -1,4 +1,4 @@
-from flask import Flask, render_template, jsonify
+from flask import Flask, render_template, jsonify, request
 import sqlite3
 import os
 
@@ -165,6 +165,11 @@ def get_surah(surah):
         "ayahs": [dict(r) for r in rows]
     })
 
+@app.route("/log", methods=["POST"])
+def log():
+    data = request.json
+    print("CLIENT:", data["msg"])
+    return "ok"
 
 if __name__ == "__main__":
     app.run(debug=True)
