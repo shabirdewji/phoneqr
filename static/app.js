@@ -72,6 +72,7 @@ function buildId(surah, ayah)
 async function playSurah()
 {
     stopRequested = false;
+    currentIndex = 0;
 
     for (let i = 0; i < ayahs.length; i++)
     {
@@ -79,11 +80,124 @@ async function playSurah()
 
         currentIndex = i;
 
-        await playAyahQueue(ayahs[i]);
+        console.log("Playing ayah index:", i);
 
-        await sleep(250);
+        await playAyah(ayahs[i]);
     }
 }
+async function playAyah(ayah)
+{
+    const playArabic = settings.playArabic;
+    const playEnglish = settings.playEnglish;
+
+    const id = buildId(ayah.surah, ayah.ayah);
+
+    console.log("START AYAH", ayah.ayah);
+
+    highlightAyah(ayah.surah, ayah.ayah);
+
+    // 🔥 ARABIC
+    if (playArabic)
+    {
+        await playArabicAudioSafe(id);
+    }
+
+    console.log("AFTER ARABIC");
+
+    // 🔥 ENGLISH (ONLY IF STILL ENABLED)
+    if (playEnglish)
+    {
+        console.log("START ENGLISH");
+
+        await playEnglishSafe(ayah.text);
+    }
+}
+
+function playEnglishSafe(text)
+{
+    return new Promise((resolve) => {
+
+        if (!('speechSynthesis' in window)) {
+            resolve();
+            return;
+        }
+
+        const utter = new SpeechSynthesisUtterance(text);
+        utter.lang = "en-US";
+        utter.rate = 0.95;
+
+        let done = false;
+
+        const finish = () => {
+            if (done) return;
+            done = true;
+            resolve();
+        };
+
+        utter.onend = finish;
+        utter.onerror = finish;
+
+        // 🔥 CRITICAL: avoid iOS silent failure
+        speechSynthesis.cancel();
+
+        setTimeout(() => {
+            try {
+                speechSynthesis.speak(utter);
+            } catch (e) {
+                console.warn("ENGLISH SPEAK FAILED", e);
+                finish();
+            }
+        }, 50);
+
+        // 🔥 fallback safety (iOS sometimes never fires events)
+        setTimeout(() => {
+            console.warn("ENGLISH TIMEOUT");
+            finish();
+        }, 8000);
+    });
+}
+
+function playArabicAudioSafe(id)
+{
+    const audio = document.getElementById("audioPlayer");
+    const reciter = settings.reciter;
+
+    const url = `https://everyayah.com/data/${reciter}/${id}.mp3`;
+
+    audio.pause();
+    audio.currentTime = 0;
+    audio.src = url;
+
+    return new Promise((resolve) => {
+
+        let done = false;
+
+        const finish = () => {
+            if (done) return;
+            done = true;
+
+            audio.onended = null;
+            audio.onerror = null;
+
+            resolve();
+        };
+
+        audio.onended = finish;
+        audio.onerror = finish;
+
+        const p = audio.play();
+
+        if (p) {
+            p.catch(() => finish());
+        }
+
+        setTimeout(() => {
+            console.warn("ARABIC TIMEOUT");
+            finish();
+        }, 25000);
+    });
+}
+
 
 function highlightAyah(surah, ayahNumber)
 {
@@ -163,57 +277,6 @@ async function playAyahQueue(ayah)
     }
 }
 
-async function playArabicAudioSafe(id)
-{
-    const audio = document.getElementById("audioPlayer");
-    const reciter = settings.reciter;
-
-    const url = `https://everyayah.com/data/${reciter}/${id}.mp3`;
-
-    audio.pause();
-    audio.currentTime = 0;
-    audio.src = url;
-
-    return new Promise((resolve) => {
-
-        let done = false;
-
-        const finish = () => {
-            if (done) return;
-            done = true;
-
-            audio.pause();
-            audio.src = "";
-            resolve();
-        };
-
-        audio.onended = () => {
-            console.log("ARABIC END");
-            finish();
-        };
-
-        audio.onerror = () => finish();
-
-        // 🔥 IMPORTANT: wait for real playback start
-        const p = audio.play();
-
-        if (p !== undefined)
-        {
-            p.then(() => {
-                console.log("ARABIC STARTED");
-            }).catch(() => {
-                console.log("ARABIC PLAY BLOCKED");
-                finish();
-            });
-        }
-
-        // 🔥 HARD SAFETY TIMEOUT (iPhone fallback)
-        setTimeout(() => {
-            console.warn("ARABIC TIMEOUT FORCE NEXT");
-            finish();
-        }, 20000);
-    });
-}
 
 
 function stopReading()
