@@ -6,12 +6,19 @@ let settings = {
     playArabic: true,
     playEnglish: true,
     reciter: "Alafasy_128kbps",
-    fontSize: 20
+    fontSize: 16
 };
 
-window.onload = () => {
+let playerState = {
+    index: 0,
+    running: false,
+    stop: false
+};
+
+window.onload = async () => {
     loadSettings();
-    loadSurah();
+    await loadSurah();
+    applySettings(); // 🔥 IMPORTANT
 };
 
 document.body.addEventListener("click", () => {
@@ -71,47 +78,30 @@ function buildId(surah, ayah)
 
 async function playSurah()
 {
-    stopRequested = false;
-    currentIndex = 0;
+    playerState.stop = false;
+    playerState.running = true;
+    playerState.index = 0;
 
-    for (let i = 0; i < ayahs.length; i++)
-    {
-        if (stopRequested) break;
+    while (
+        playerState.index < ayahs.length &&
+        !playerState.stop
+    ) {
+        const ayah = ayahs[playerState.index];
 
-        currentIndex = i;
+        console.log("▶ AYAH INDEX:", playerState.index);
 
-        console.log("Playing ayah index:", i);
+        await playAyahEngine(ayah);
 
-        await playAyah(ayahs[i]);
+        playerState.index++;
     }
+
+    playerState.running = false;
+
+    console.log("🏁 FINISHED SURAH");
 }
-async function playAyah(ayah)
-{
-    const playArabic = settings.playArabic;
-    const playEnglish = settings.playEnglish;
 
-    const id = buildId(ayah.surah, ayah.ayah);
 
-    console.log("START AYAH", ayah.ayah);
 
-    highlightAyah(ayah.surah, ayah.ayah);
-
-    // 🔥 ARABIC
-    if (playArabic)
-    {
-        await playArabicAudioSafe(id);
-    }
-
-    console.log("AFTER ARABIC");
-
-    // 🔥 ENGLISH (ONLY IF STILL ENABLED)
-    if (playEnglish)
-    {
-        console.log("START ENGLISH");
-
-        await playEnglishSafe(ayah.text);
-    }
-}
 
 function playEnglishSafe(text)
 {
@@ -137,17 +127,9 @@ function playEnglishSafe(text)
         utter.onend = finish;
         utter.onerror = finish;
 
-        // 🔥 CRITICAL: avoid iOS silent failure
-        speechSynthesis.cancel();
 
-        setTimeout(() => {
-            try {
-                speechSynthesis.speak(utter);
-            } catch (e) {
-                console.warn("ENGLISH SPEAK FAILED", e);
-                finish();
-            }
-        }, 50);
+        speechSynthesis.speak(utter);
+
 
         // 🔥 fallback safety (iOS sometimes never fires events)
         setTimeout(() => {
@@ -157,7 +139,7 @@ function playEnglishSafe(text)
     });
 }
 
-function playArabicAudioSafe(id)
+function playArabicSafe(id)
 {
     const audio = document.getElementById("audioPlayer");
     const reciter = settings.reciter;
@@ -191,13 +173,13 @@ function playArabicAudioSafe(id)
             p.catch(() => finish());
         }
 
+        // 🔥 iPhone safety net
         setTimeout(() => {
             console.warn("ARABIC TIMEOUT");
             finish();
-        }, 25000);
+        }, 30000);
     });
 }
-
 
 function highlightAyah(surah, ayahNumber)
 {
@@ -219,76 +201,52 @@ function highlightAyah(surah, ayahNumber)
     });
 }
 
-async function speakEnglishSafe(text)
+async function playAyahEngine(ayah)
 {
-    return new Promise((resolve) => {
-
-        speechSynthesis.cancel();
-
-        const utter = new SpeechSynthesisUtterance(text);
-
-        utter.lang = "en-US";
-        utter.rate = 0.95;
-
-        let done = false;
-
-        const finish = () => {
-            if (done) return;
-            done = true;
-            resolve();
-        };
-
-        utter.onend = finish;
-        utter.onerror = finish;
-
-        speechSynthesis.speak(utter);
-
-        // 🔥 iPhone safety fallback
-        setTimeout(finish, 6000);
-    });
-}
-
-
-async function playAyahQueue(ayah)
-{
-    logToServer("START AYAH " + ayah.ayah);
-
-    const playArabic = settings.playArabic;
-    const playEnglish = settings.playEnglish;
-
     const id = buildId(ayah.surah, ayah.ayah);
 
     console.log("START AYAH", ayah.ayah);
 
     highlightAyah(ayah.surah, ayah.ayah);
 
-    if (playArabic)
+    // 🔥 ARABIC PHASE
+    if (settings.playArabic)
     {
-        await playArabicAudioSafe(id);
-        await sleep(200);
+        await playArabicSafe(id);
+
+        if (playerState.stop) return;
     }
 
     console.log("AFTER ARABIC");
 
-    if (playEnglish)
+    // 🔥 ENGLISH PHASE
+    if (settings.playEnglish)
     {
-        await speakEnglishSafe(ayah.text);
-        await sleep(200);
+        await playEnglishSafe(ayah.text);
+
+        if (playerState.stop) return;
     }
+
+    console.log("END AYAH");
 }
+
+
 
 
 
 function stopReading()
 {
-    stopRequested = true;
+    playerState.stop = true;
+    playerState.running = false;
 
     const audio = document.getElementById("audioPlayer");
+
     audio.pause();
     audio.currentTime = 0;
 
-    speechSynthesis.cancel(); // only here
+    speechSynthesis.cancel();
 }
+
 
 function loadSettings() {
     const saved = localStorage.getItem("quranSettings");
@@ -359,45 +317,12 @@ window.addEventListener("DOMContentLoaded", () => {
 
     document.getElementById("setFontSize").addEventListener("input", (e) => {
         const size = e.target.value;
+        settings.fontSize = size;
 
         document.querySelectorAll(".ayah").forEach(el => {
             el.style.fontSize = size + "px";
         });
 
-        document.getElementById("fontSizeLabel").innerText =
-            size + "px";
+        document.getElementById("fontSizeLabel").innerText = size + "px";
     });
-
-    const widget = document.getElementById("fontWidget");
-
-    let isDragging = false;
-    let offsetX, offsetY;
-
-    widget.addEventListener("mousedown", (e) => {
-        isDragging = true;
-        offsetX = e.clientX - widget.offsetLeft;
-        offsetY = e.clientY - widget.offsetTop;
-    });
-
-    document.addEventListener("mousemove", (e) => {
-        if (!isDragging) return;
-
-        widget.style.left = (e.clientX - offsetX) + "px";
-        widget.style.top = (e.clientY - offsetY) + "px";
-    });
-
-    document.addEventListener("mouseup", () => {
-        isDragging = false;
-    });
-
-    document.getElementById("quickFont").value = settings.fontSize;
-
-    document.getElementById("quickFont").addEventListener("input", (e) => {
-        settings.fontSize = e.target.value;
-
-        document.querySelectorAll(".ayah").forEach(el => {
-            el.style.fontSize = settings.fontSize + "px";
-        });
-    });
-
 });
