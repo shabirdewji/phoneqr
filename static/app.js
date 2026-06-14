@@ -104,55 +104,6 @@ async function playSurah()
 
 
 
-function playEnglishSafe(text)
-{
-    return new Promise((resolve) => {
-
-        if (!('speechSynthesis' in window)) {
-            resolve();
-            return;
-        }
-
-        speechSynthesis.cancel();
-
-        const utter = new SpeechSynthesisUtterance(text);
-        utter.lang = "en-US";
-        utter.rate = 0.9;
-
-        let done = false;
-
-        const finish = () => {
-            if (done) return;
-            done = true;
-            isSpeaking = false;
-            resolve();
-        };
-
-        utter.onstart = () => {
-            isSpeaking = true;
-        };
-
-        utter.onend = finish;
-        utter.onerror = finish;
-
-        setTimeout(() => {
-            try {
-                speechSynthesis.speak(utter);
-            } catch (e) {
-                finish();
-            }
-        }, 100);
-
-        // HARD iOS SAFETY NET (critical)
-        setTimeout(() => {
-            if (!done) {
-                speechSynthesis.cancel();
-                finish();
-            }
-        }, 9000);
-    });
-}
-
 
 async function playArabicSafe(id)
 {
@@ -219,14 +170,16 @@ async function playAyahEngine(ayah)
 
     highlightAyah(ayah.surah, ayah.ayah);
 
+    // Arabic
     if (settings.playArabic) {
         await playArabicSafe(id);
-        await sleep(200); // 🔥 IMPORTANT iPhone buffer
+        if (playerState.stop) return;
     }
 
+    // English (NEW)
     if (settings.playEnglish) {
-        await playEnglishSafe(ayah.text);
-        await sleep(300); // 🔥 prevents speech overlap bugs
+        await playEnglishAudio(ayah.surah, ayah.ayah);
+        if (playerState.stop) return;
     }
 }
 
@@ -311,4 +264,40 @@ function applySettings() {
 
     const label = document.getElementById("fontSizeLabel");
     if (label) label.innerText = settings.fontSize + "px";
+}
+
+function playEnglishAudio(surah, ayah) {
+
+    const audio = document.getElementById("audioPlayer");
+
+    // FORCE clean integers
+    surah = parseInt(surah);
+    ayah = parseInt(ayah);
+
+    const url = `/english/${surah}/${ayah}`;
+
+    console.log("ENGLISH URL:", url);
+
+    audio.pause();
+    audio.currentTime = 0;
+    audio.src = url;
+
+    return new Promise((resolve) => {
+
+        const finish = () => {
+            audio.onended = null;
+            audio.onerror = null;
+            resolve();
+        };
+
+        audio.onended = finish;
+        audio.onerror = finish;
+
+        audio.play().catch(err => {
+            console.log("PLAY FAILED:", err);
+            finish();
+        });
+
+        setTimeout(finish, 15000);
+    });
 }

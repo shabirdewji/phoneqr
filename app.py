@@ -1,6 +1,13 @@
-from flask import Flask, render_template, jsonify, request
+from flask import Flask, render_template, jsonify, request, send_file, abort
 import sqlite3
 import os
+
+
+from gtts import gTTS
+
+
+CACHE_DIR = "static/en_audio"
+os.makedirs(CACHE_DIR, exist_ok=True)
 
 app = Flask(__name__)
 #DB = "/Users/shabirdewji/python/phoneqr/quran.db"
@@ -164,6 +171,62 @@ def get_surah(surah):
         "surah_name": SURAH_NAMES.get(surah, "Unknown"),
         "ayahs": [dict(r) for r in rows]
     })
+    
+def get_ayah_translation(surah, ayah):
+    try:
+        surah = int(surah)
+        ayah = int(ayah)
+
+        with sqlite3.connect(DB) as conn:
+            cursor = conn.cursor()
+            cursor.execute(
+                """
+                SELECT text
+                FROM quran
+                WHERE surah = ? AND ayah = ?
+                """,
+                (surah, ayah)
+            )
+
+            row = cursor.fetchone()
+            return row[0] if row else None
+
+    except Exception as e:
+        print("DB ERROR:", e)
+        return None
+    
+@app.route("/english/<int:surah>/<int:ayah>")
+def english_audio(surah, ayah):
+
+    # normalize
+    try:
+        surah_int = int(surah)
+        ayah_int = int(ayah)
+    except:
+        abort(400, "Invalid surah/ayah")
+
+    filename = f"{surah_int:03d}_{ayah_int:03d}.mp3"
+    path = os.path.join(CACHE_DIR, filename)
+
+    # ✅ use cache
+    if os.path.exists(path):
+        return send_file(path, mimetype="audio/mpeg")
+
+    # get translation
+    text = get_ayah_translation(surah_int, ayah_int)
+
+    if not text:
+        abort(404, "Translation not found")
+
+    try:
+        tts = gTTS(text=text, lang="en")
+        tts.save(path)
+    except Exception as e:
+        print("TTS ERROR:", e)
+        abort(500, "TTS generation failed")
+
+    return send_file(path, mimetype="audio/mpeg")
+
 
 @app.route("/log", methods=["POST"])
 def log():

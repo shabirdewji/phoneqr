@@ -3,3 +3,4 @@
 *.db-shm
 __pycache__/
 .env
+static/en_audio/
