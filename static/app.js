@@ -89,6 +89,7 @@ async function playSurah()
         const ayah = ayahs[playerState.index];
 
         console.log("▶ AYAH INDEX:", playerState.index);
+        logToServer("PLAYING AYAH INDEX " + playerState.index);
 
         await playAyahEngine(ayah);
 
@@ -107,35 +108,60 @@ function playEnglishSafe(text)
 {
     return new Promise((resolve) => {
 
-        if (!('speechSynthesis' in window)) {
+        logToServer("ENGLISH FUNCTION ENTER");
+
+        if (!('speechSynthesis' in window))
+        {
+            logToServer("NO SPEECH SYNTHESIS");
             resolve();
             return;
         }
 
         const utter = new SpeechSynthesisUtterance(text);
+
         utter.lang = "en-US";
         utter.rate = 0.95;
 
         let done = false;
 
-        const finish = () => {
+        const finish = (reason) => {
             if (done) return;
+
             done = true;
+
+            logToServer("ENGLISH FINISH: " + reason);
+
             resolve();
         };
 
-        utter.onend = finish;
-        utter.onerror = finish;
+        utter.onstart = () => {
+            logToServer("ENGLISH ONSTART");
+        };
 
+        utter.onend = () => {
+            logToServer("ENGLISH ONEND");
+            finish("onend");
+        };
 
-        speechSynthesis.speak(utter);
+        utter.onerror = (e) => {
+            logToServer("ENGLISH ONERROR " + e.error);
+            finish("onerror");
+        };
 
+        try
+        {
+            logToServer("CALLING SPEAK");
+            speechSynthesis.speak(utter);
+        }
+        catch(e)
+        {
+            logToServer("SPEAK EXCEPTION " + e);
+            finish("exception");
+        }
 
-        // 🔥 fallback safety (iOS sometimes never fires events)
         setTimeout(() => {
-            console.warn("ENGLISH TIMEOUT");
-            finish();
-        }, 8000);
+            finish("timeout");
+        }, 10000);
     });
 }
 
@@ -220,9 +246,13 @@ async function playAyahEngine(ayah)
     console.log("AFTER ARABIC");
 
     // 🔥 ENGLISH PHASE
-    if (settings.playEnglish)
+if (settings.playEnglish)
     {
+        logToServer("START ENGLISH " + ayah.ayah);
+
         await playEnglishSafe(ayah.text);
+
+        logToServer("END ENGLISH " + ayah.ayah);
 
         if (playerState.stop) return;
     }
