@@ -1,15 +1,22 @@
-from flask import Flask, send_file, abort
-from gtts import gTTS
 import os
 import sqlite3
+import asyncio
+import edge_tts
 
-app = Flask(__name__)
 DB_PATH = "/Users/shabirdewji/python/phoneqr/quran.db"
-
 CACHE_DIR = "static/en_audio"
+
 os.makedirs(CACHE_DIR, exist_ok=True)
 
-def generate_all_audio():
+VOICE = "en-US-AriaNeural"
+
+
+async def generate(text, path):
+    communicate = edge_tts.Communicate(text, VOICE)
+    await communicate.save(path)
+
+
+async def generate_all_audio():
 
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
@@ -30,8 +37,10 @@ def generate_all_audio():
         try:
             print(f"Generating {filename} ({i+1}/{len(rows)})")
 
-            tts = gTTS(text=text, lang="en")
-            tts.save(path)
+            await generate(text, path)
+
+            # small delay prevents throttling
+            await asyncio.sleep(0.2)
 
         except Exception as e:
             print(f"FAILED {surah}:{ayah}", e)
@@ -41,4 +50,4 @@ def generate_all_audio():
 
 
 if __name__ == "__main__":
-    generate_all_audio()
+    asyncio.run(generate_all_audio())

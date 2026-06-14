@@ -1,13 +1,16 @@
 from flask import Flask, render_template, jsonify, request, send_file, abort
 import sqlite3
 import os
-
-
-from gtts import gTTS
+import edge_tts
+import asyncio
 
 
 CACHE_DIR = "static/en_audio"
 os.makedirs(CACHE_DIR, exist_ok=True)
+
+async def generate(text, path):
+    communicate = edge_tts.Communicate(text, "en-US-AriaNeural")
+    await communicate.save(path)
 
 app = Flask(__name__)
 #DB = "/Users/shabirdewji/python/phoneqr/quran.db"
@@ -195,37 +198,17 @@ def get_ayah_translation(surah, ayah):
         print("DB ERROR:", e)
         return None
     
-@app.route("/english/<int:surah>/<int:ayah>")
+@app.route("/english/<surah>/<ayah>")
 def english_audio(surah, ayah):
 
-    # normalize
-    try:
-        surah_int = int(surah)
-        ayah_int = int(ayah)
-    except:
-        abort(400, "Invalid surah/ayah")
+    path = f"static/en_audio/{surah}_{ayah}.mp3"
 
-    filename = f"{surah_int:03d}_{ayah_int:03d}.mp3"
-    path = os.path.join(CACHE_DIR, filename)
+    if not os.path.exists(path):
+        text = get_ayah_translation(surah, ayah)
 
-    # ✅ use cache
-    if os.path.exists(path):
-        return send_file(path, mimetype="audio/mpeg")
+        asyncio.run(generate(text, path))
 
-    # get translation
-    text = get_ayah_translation(surah_int, ayah_int)
-
-    if not text:
-        abort(404, "Translation not found")
-
-    try:
-        tts = gTTS(text=text, lang="en")
-        tts.save(path)
-    except Exception as e:
-        print("TTS ERROR:", e)
-        abort(500, "TTS generation failed")
-
-    return send_file(path, mimetype="audio/mpeg")
+    return send_file(path)
 
 
 @app.route("/log", methods=["POST"])
