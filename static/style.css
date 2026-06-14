@@ -259,6 +259,11 @@ body {
     cursor: grab;
 }
 
+#gearIcon {
+    cursor: pointer;
+    user-select: none;
+}
+
 @media (min-width: 600px) {
     .phone {
         width: 393px;

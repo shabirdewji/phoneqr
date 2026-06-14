@@ -1,5 +1,4 @@
 let ayahs = [];
-let isSpeaking = false;
 
 let settings = {
     playArabic: true,
@@ -14,99 +13,109 @@ let playerState = {
     stop: false
 };
 
-window.onload = async () => {
+let voices = [];
+
+
+window.addEventListener("DOMContentLoaded", async () => {
     loadSettings();
     await loadSurah();
-    applySettings(); // 🔥 IMPORTANT
-};
+    applySettings();
 
+    UI.init();
+    initVoices();
+});
 
+// resume audio context on first click (iOS fix)
 document.body.addEventListener("click", () => {
     speechSynthesis.resume();
 }, { once: true });
 
-function sleep(ms)
-{
-    return new Promise(resolve => setTimeout(resolve, ms));
+function sleep(ms) {
+    return new Promise(r => setTimeout(r, ms));
 }
 
 function logToServer(msg) {
     fetch("/log", {
         method: "POST",
-        headers: {"Content-Type": "application/json"},
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ msg })
     });
 }
 
-async function loadSurah()
-{
-    let surah = document.getElementById("surahSelect").value;
+async function loadSurah() {
+    const surahEl = document.getElementById("surahSelect");
+    if (!surahEl) return;
 
-    let res = await fetch(`/surah/${surah}`);
-    let data = await res.json();
+    const surah = surahEl.value;
+
+    const res = await fetch(`/surah/${surah}`);
+    const data = await res.json();
 
     ayahs = data.ayahs;
-    
+    console.log("FIRST AYAH:", ayahs[0]);
+
     document.getElementById("status").innerText =
-    `Surah ${data.surah_number} - ${data.surah_name}`;
+        `Surah ${data.surah_number} - ${data.surah_name}`;
 
-    let html = "";
-
-    ayahs.forEach(a => {
-        html += `
-        <div class="ayah" id="ayah-${a.surah}-${a.ayah}">
-            <b>${a.ayah}</b>.
-            ${a.text}
-        </div>`;
-    });
-
-    document.getElementById("ayahs").innerHTML = html;
+    document.getElementById("ayahs").innerHTML =
+        ayahs.map(a => `
+            <div class="ayah" id="ayah-${a.surah}-${a.ayah}">
+                <b>${a.ayah}</b>. ${a.text}
+            </div>
+        `).join("");
 }
 
-document.getElementById("surahSelect")
-        .addEventListener("change", loadSurah);
-
-
-
-function buildId(surah, ayah)
-{
-    const s = String(surah).padStart(3, "0");
-    const a = String(ayah).padStart(3, "0");
-
-    return s + a;
+function buildId(surah, ayah) {
+    return String(surah).padStart(3, "0") +
+           String(ayah).padStart(3, "0");
 }
 
-async function playSurah()
-{
+async function playSurah() {
     playerState.stop = false;
     playerState.running = true;
     playerState.index = 0;
 
-    while (
-        playerState.index < ayahs.length &&
-        !playerState.stop
-    ) {
+    while (playerState.index < ayahs.length && !playerState.stop) {
         const ayah = ayahs[playerState.index];
 
-        console.log("▶ AYAH INDEX:", playerState.index);
-        logToServer("PLAYING AYAH INDEX " + playerState.index);
+        highlightAyah(ayah.surah, ayah.ayah);
+
+        logToServer("PLAYING AYAH " + playerState.index);
 
         await playAyahEngine(ayah);
+
+        if (playerState.stop) break;
 
         playerState.index++;
     }
 
     playerState.running = false;
-
-    console.log("🏁 FINISHED SURAH");
 }
 
+async function playAyahEngine(ayah) {
 
+    console.log("START", ayah.ayah);
 
+    const id = buildId(ayah.surah, ayah.ayah);
 
+    if (settings.playArabic) {
+        console.log("Arabic start");
+        await playArabicSafe(id);
+        console.log("Arabic done");
+    }
 
-async function playArabicSafe(id)
-{
+    if (settings.playEnglish) {
+        console.log("English start");
+        await speak(ayah.text);
+        console.log("English done");
+    }
+
+    console.log("END", ayah.ayah);
+}
+
+/* ---------------- ARABIC AUDIO ---------------- */
+
+async function playArabicSafe(id) {
     const audio = document.getElementById("audioPlayer");
     const reciter = settings.reciter;
 
@@ -123,8 +132,10 @@ async function playArabicSafe(id)
             audio.onended = null;
             audio.onerror = null;
 
-            // 🔥 CRITICAL iPhone buffer
-            await sleep(250);
+            audio.pause();
+            audio.currentTime = 0;
+
+            await sleep(150);
 
             resolve();
         };
@@ -132,8 +143,6 @@ async function playArabicSafe(id)
         audio.onended = finish;
         audio.onerror = finish;
 
-        audio.pause();
-        audio.currentTime = 0;
         audio.src = url;
 
         const p = audio.play();
@@ -143,18 +152,84 @@ async function playArabicSafe(id)
     });
 }
 
+/* ---------------- ENGLISH SPEECH ---------------- */
 
-function highlightAyah(surah, ayahNumber)
-{
-    document.querySelectorAll(".ayah")
+function initVoices() {
+    const load = () => {
+        voices = speechSynthesis.getVoices();
+    };
+
+    load();
+    speechSynthesis.onvoiceschanged = load;
+}
+
+function speak(text) {
+    return new Promise((resolve) => {
+
+        if (!text) {
+            console.warn("Empty text passed to speak()");
+            return resolve();
+        }
+
+        speechSynthesis.cancel();
+
+        const u = new SpeechSynthesisUtterance(text);
+
+        u.lang = "en-US";
+        u.rate = 0.95;   // slightly more natural
+        u.pitch = 1;
+
+        const voice = voices.find(v => v.lang.includes("en"));
+        if (voice) u.voice = voice;
+
+        let finished = false;
+
+        const finish = () => {
+            if (finished) return;
+            finished = true;
+
+            speechSynthesis.cancel();
+            resolve();
+        };
+
+        u.onstart = () => {
+            console.log("🔊 speaking started");
+        };
+
+        u.onend = finish;
+        u.onerror = finish;
+
+        // IMPORTANT FIX: no aggressive fallback timer anymore
+        // (this was causing premature "VOICE END" in earlier versions)
+
+        speechSynthesis.speak(u);
+    });
+}
+
+/* ---------------- STOP ---------------- */
+
+function stopReading() {
+    playerState.stop = true;
+    playerState.running = false;
+
+    const audio = document.getElementById("audioPlayer");
+    if (audio) {
+        audio.pause();
+        audio.currentTime = 0;
+    }
+
+    speechSynthesis.cancel();
+}
+
+/* ---------------- UI ---------------- */
+
+function highlightAyah(surah, ayahNumber) {
+    document.querySelectorAll(".ayah.active")
         .forEach(a => a.classList.remove("active"));
 
     const el = document.getElementById(`ayah-${surah}-${ayahNumber}`);
 
-    if (!el) {
-        console.log("Highlight NOT FOUND:", surah, ayahNumber);
-        return;
-    }
+    if (!el) return;
 
     el.classList.add("active");
 
@@ -164,45 +239,11 @@ function highlightAyah(surah, ayahNumber)
     });
 }
 
-async function playAyahEngine(ayah)
-{
-    const id = buildId(ayah.surah, ayah.ayah);
-
-    highlightAyah(ayah.surah, ayah.ayah);
-
-    // Arabic
-    if (settings.playArabic) {
-        await playArabicSafe(id);
-        if (playerState.stop) return;
-    }
-
-    // English (NEW)
-    if (settings.playEnglish) {
-        await playEnglishAudio(ayah.surah, ayah.ayah);
-        if (playerState.stop) return;
-    }
-}
-
-
-
-
-
-function stopReading()
-{
-    playerState.stop = true;
-    playerState.running = false;
-
-    const audio = document.getElementById("audioPlayer");
-
-    audio.pause();
-    audio.currentTime = 0;
-
-    speechSynthesis.cancel();
-}
-
+/* ---------------- SETTINGS ---------------- */
 
 function loadSettings() {
     const saved = localStorage.getItem("quranSettings");
+
     if (saved) {
         settings = JSON.parse(saved);
     }
@@ -210,33 +251,23 @@ function loadSettings() {
     applySettings();
 }
 
-function openSettings() {
-    document.getElementById("settingsModal").classList.remove("hidden");
-
-    document.getElementById("setArabic").checked = settings.playArabic;
-    document.getElementById("setEnglish").checked = settings.playEnglish;
-    document.getElementById("setReciter").value = settings.reciter;
-
-    const slider = document.getElementById("setFontSize");
-    slider.value = settings.fontSize;
-
-    document.getElementById("fontSizeLabel").innerText = settings.fontSize + "px";
+function applySettings() {
+    document.querySelectorAll(".ayah").forEach(el => {
+        el.style.fontSize = settings.fontSize + "px";
+    });
 }
 
-function closeSettings() {
-    document.getElementById("settingsModal").classList.add("hidden");
-}
-
+/* ---------------- SETTINGS UI ---------------- */
 
 window.addEventListener("DOMContentLoaded", () => {
 
-    const set = (id, event, key, isCheckbox = false) => {
+    const bind = (id, key, type = "value") => {
         const el = document.getElementById(id);
         if (!el) return;
 
-        el.addEventListener(event, () => {
+        el.addEventListener(type === "checkbox" ? "change" : "input", () => {
 
-            settings[key] = isCheckbox ? el.checked : el.value;
+            settings[key] = type === "checkbox" ? el.checked : el.value;
 
             localStorage.setItem("quranSettings", JSON.stringify(settings));
 
@@ -244,60 +275,52 @@ window.addEventListener("DOMContentLoaded", () => {
         });
     };
 
-    set("setArabic", "change", "playArabic", true);
-    set("setEnglish", "change", "playEnglish", true);
-    set("setReciter", "change", "reciter", false);
-    set("setFontSize", "input", "fontSize", false);
+    bind("setArabic", "playArabic", "checkbox");
+    bind("setEnglish", "playEnglish", "checkbox");
+    bind("setReciter", "reciter");
+    bind("setFontSize", "fontSize");
 
-    // optional: ensure UI matches stored settings
-    document.getElementById("setArabic").checked = settings.playArabic;
-    document.getElementById("setEnglish").checked = settings.playEnglish;
-    document.getElementById("setReciter").value = settings.reciter;
-    document.getElementById("setFontSize").value = settings.fontSize;
 });
 
-function applySettings() {
 
-    document.querySelectorAll(".ayah").forEach(el => {
-        el.style.fontSize = settings.fontSize + "px";
-    });
 
-    const label = document.getElementById("fontSizeLabel");
-    if (label) label.innerText = settings.fontSize + "px";
-}
+const UI = {
+    init() {
+        this.bindEvents();
+    },
 
-function playEnglishAudio(surah, ayah) {
+    bindEvents() {
+        document.getElementById("playBtn")
+            ?.addEventListener("click", () => playSurah());
 
-    const audio = document.getElementById("audioPlayer");
+        document.getElementById("stopBtn")
+            ?.addEventListener("click", () => stopReading());
 
-    // FORCE clean integers
-    surah = parseInt(surah);
-    ayah = parseInt(ayah);
+        document.getElementById("gearIcon")
+            ?.addEventListener("click", () => UI.openSettings());
 
-    const url = `/english/${surah}/${ayah}`;
+        document.getElementById("closeSettingsBtn")
+            ?.addEventListener("click", () => UI.closeSettings());
 
-    console.log("ENGLISH URL:", url);
+        document.getElementById("surahSelect")
+            ?.addEventListener("change", loadSurah);
+    },
 
-    audio.pause();
-    audio.currentTime = 0;
-    audio.src = url;
+    openSettings() {
+        document.getElementById("settingsModal").classList.remove("hidden");
 
-    return new Promise((resolve) => {
+        document.getElementById("setArabic").checked = settings.playArabic;
+        document.getElementById("setEnglish").checked = settings.playEnglish;
+        document.getElementById("setReciter").value = settings.reciter;
 
-        const finish = () => {
-            audio.onended = null;
-            audio.onerror = null;
-            resolve();
-        };
+        document.getElementById("setFontSize").value = settings.fontSize;
 
-        audio.onended = finish;
-        audio.onerror = finish;
+        document.getElementById("fontSizeLabel").innerText =
+            settings.fontSize + "px";
+    },
 
-        audio.play().catch(err => {
-            console.log("PLAY FAILED:", err);
-            finish();
-        });
+    closeSettings() {
+        document.getElementById("settingsModal").classList.add("hidden");
+    }
+};
 
-        setTimeout(finish, 15000);
-    });
-}
