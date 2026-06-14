@@ -1,4 +1,5 @@
 let ayahs = [];
+let isSpeaking = false;
 
 let settings = {
     playArabic: true,
@@ -107,106 +108,72 @@ function playEnglishSafe(text)
 {
     return new Promise((resolve) => {
 
-        logToServer("ENGLISH FUNCTION ENTER");
-
-        if (!('speechSynthesis' in window))
-        {
-            logToServer("NO SPEECH SYNTHESIS");
+        if (!('speechSynthesis' in window)) {
             resolve();
             return;
         }
 
+        speechSynthesis.cancel();
+
         const utter = new SpeechSynthesisUtterance(text);
-
         utter.lang = "en-US";
-        utter.rate = 0.95;
-
-        let done = false;
-
-        const finish = (reason) => {
-            if (done) return;
-
-            done = true;
-
-            logToServer("ENGLISH FINISH: " + reason);
-
-            resolve();
-        };
-
-        utter.onstart = () => {
-            logToServer("ENGLISH ONSTART");
-        };
-
-        utter.onend = () => {
-            logToServer("ENGLISH ONEND");
-            finish("onend");
-        };
-
-        utter.onerror = (e) => {
-            logToServer("ENGLISH ONERROR " + e.error);
-            finish("onerror");
-        };
-
-        try
-        {
-            logToServer("CALLING SPEAK");
-            speechSynthesis.speak(utter);
-
-
-
-            setTimeout(() => {
-                logToServer(
-                    "after speak paused=" +
-                    speechSynthesis.paused +
-                    " speaking=" +
-                    speechSynthesis.speaking +
-                    " pending=" +
-                    speechSynthesis.pending
-                );
-            }, 1000);
-
-
-
-            logToServer("voices=" + speechSynthesis.getVoices().length);
-            logToServer(
-                        "paused=" + speechSynthesis.paused +
-                        " speaking=" + speechSynthesis.speaking +
-                        " pending=" + speechSynthesis.pending
-                    );
-        }
-        catch(e)
-        {
-            logToServer("SPEAK EXCEPTION " + e);
-            finish("exception");
-        }
-
-        setTimeout(() => {
-            finish("timeout");
-        }, 10000);
-    });
-}
-
-function playArabicSafe(id)
-{
-    const audio = document.getElementById("audioPlayer");
-    const reciter = settings.reciter;
-
-    const url = `https://everyayah.com/data/${reciter}/${id}.mp3`;
-
-    audio.pause();
-    audio.currentTime = 0;
-    audio.src = url;
-
-    return new Promise((resolve) => {
+        utter.rate = 0.9;
 
         let done = false;
 
         const finish = () => {
             if (done) return;
             done = true;
+            isSpeaking = false;
+            resolve();
+        };
+
+        utter.onstart = () => {
+            isSpeaking = true;
+        };
+
+        utter.onend = finish;
+        utter.onerror = finish;
+
+        setTimeout(() => {
+            try {
+                speechSynthesis.speak(utter);
+            } catch (e) {
+                finish();
+            }
+        }, 100);
+
+        // HARD iOS SAFETY NET (critical)
+        setTimeout(() => {
+            if (!done) {
+                speechSynthesis.cancel();
+                finish();
+            }
+        }, 9000);
+    });
+}
+
+
+async function playArabicSafe(id)
+{
+    const audio = document.getElementById("audioPlayer");
+    const reciter = settings.reciter;
+
+    const url = `https://everyayah.com/data/${reciter}/${id}.mp3`;
+
+    return new Promise((resolve) => {
+
+        let done = false;
+
+        const finish = async () => {
+            if (done) return;
+            done = true;
 
             audio.onended = null;
             audio.onerror = null;
+
+            // 🔥 CRITICAL iPhone buffer
+            await sleep(250);
 
             resolve();
         };
@@ -214,19 +181,17 @@ function playArabicSafe(id)
         audio.onended = finish;
         audio.onerror = finish;
 
+        audio.pause();
+        audio.currentTime = 0;
+        audio.src = url;
+
         const p = audio.play();
+        if (p) p.catch(finish);
 
-        if (p) {
-            p.catch(() => finish());
-        }
-
-        // 🔥 iPhone safety net
-        setTimeout(() => {
-            console.warn("ARABIC TIMEOUT");
-            finish();
-        }, 30000);
+        setTimeout(finish, 30000);
     });
 }
+
 
 function highlightAyah(surah, ayahNumber)
 {
@@ -243,7 +208,7 @@ function highlightAyah(surah, ayahNumber)
     el.classList.add("active");
 
     el.scrollIntoView({
-        behavior: "smooth",
+        behavior: "auto",
         block: "center"
     });
 }
@@ -252,33 +217,17 @@ async function playAyahEngine(ayah)
 {
     const id = buildId(ayah.surah, ayah.ayah);
 
-    console.log("START AYAH", ayah.ayah);
-
     highlightAyah(ayah.surah, ayah.ayah);
 
-    // 🔥 ARABIC PHASE
-    if (settings.playArabic)
-    {
+    if (settings.playArabic) {
         await playArabicSafe(id);
-
-        if (playerState.stop) return;
+        await sleep(200); // 🔥 IMPORTANT iPhone buffer
     }
 
-    console.log("AFTER ARABIC");
-
-    // 🔥 ENGLISH PHASE
-if (settings.playEnglish)
-    {
-        logToServer("START ENGLISH " + ayah.ayah);
-
+    if (settings.playEnglish) {
         await playEnglishSafe(ayah.text);
-
-        logToServer("END ENGLISH " + ayah.ayah);
-
-        if (playerState.stop) return;
+        await sleep(300); // 🔥 prevents speech overlap bugs
     }
-
-    console.log("END AYAH");
 }
 
 
