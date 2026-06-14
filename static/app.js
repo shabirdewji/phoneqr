@@ -1,6 +1,4 @@
 let ayahs = [];
-let currentIndex = 0;
-let stopRequested = false;
 
 let settings = {
     playArabic: true,
@@ -20,6 +18,7 @@ window.onload = async () => {
     await loadSurah();
     applySettings(); // 🔥 IMPORTANT
 };
+
 
 document.body.addEventListener("click", () => {
     speechSynthesis.resume();
@@ -305,51 +304,8 @@ function loadSettings() {
     if (saved) {
         settings = JSON.parse(saved);
     }
-}
-
-
-function openSettings() {
-    document.getElementById("settingsModal").classList.remove("hidden");
-
-    // sync UI with current settings
-    document.getElementById("setArabic").checked = settings.playArabic;
-    document.getElementById("setEnglish").checked = settings.playEnglish;
-    document.getElementById("setReciter").value = settings.reciter;
-}
-
-function closeSettings() {
-    document.getElementById("settingsModal").classList.add("hidden");
-}
-
-function loadSettings() {
-    const saved = localStorage.getItem("quranSettings");
-    if (saved) {
-        settings = JSON.parse(saved);
-    }
 
     applySettings();
-}
-
-function saveSettings() {
-    settings.playArabic = document.getElementById("setArabic").checked;
-    settings.playEnglish = document.getElementById("setEnglish").checked;
-    settings.reciter = document.getElementById("setReciter").value;
-    settings.fontSize = document.getElementById("setFontSize").value;
-
-    localStorage.setItem("quranSettings", JSON.stringify(settings));
-
-    applySettings();
-    closeSettings();
-}
-
-function applySettings() {
-
-    document.querySelectorAll(".ayah").forEach(el => {
-        el.style.fontSize = settings.fontSize + "px";
-    });
-
-    const label = document.getElementById("fontSizeLabel");
-    if (label) label.innerText = settings.fontSize + "px";
 }
 
 function openSettings() {
@@ -365,16 +321,45 @@ function openSettings() {
     document.getElementById("fontSizeLabel").innerText = settings.fontSize + "px";
 }
 
+function closeSettings() {
+    document.getElementById("settingsModal").classList.add("hidden");
+}
+
+
 window.addEventListener("DOMContentLoaded", () => {
 
-    document.getElementById("setFontSize").addEventListener("input", (e) => {
-        const size = e.target.value;
-        settings.fontSize = size;
+    const set = (id, event, key, isCheckbox = false) => {
+        const el = document.getElementById(id);
+        if (!el) return;
 
-        document.querySelectorAll(".ayah").forEach(el => {
-            el.style.fontSize = size + "px";
+        el.addEventListener(event, () => {
+
+            settings[key] = isCheckbox ? el.checked : el.value;
+
+            localStorage.setItem("quranSettings", JSON.stringify(settings));
+
+            applySettings();
         });
+    };
 
-        document.getElementById("fontSizeLabel").innerText = size + "px";
-    });
+    set("setArabic", "change", "playArabic", true);
+    set("setEnglish", "change", "playEnglish", true);
+    set("setReciter", "change", "reciter", false);
+    set("setFontSize", "input", "fontSize", false);
+
+    // optional: ensure UI matches stored settings
+    document.getElementById("setArabic").checked = settings.playArabic;
+    document.getElementById("setEnglish").checked = settings.playEnglish;
+    document.getElementById("setReciter").value = settings.reciter;
+    document.getElementById("setFontSize").value = settings.fontSize;
 });
+
+function applySettings() {
+
+    document.querySelectorAll(".ayah").forEach(el => {
+        el.style.fontSize = settings.fontSize + "px";
+    });
+
+    const label = document.getElementById("fontSizeLabel");
+    if (label) label.innerText = settings.fontSize + "px";
+}
