@@ -170,6 +170,10 @@ async function playArabicAudioSafe(id)
 
     const url = `https://everyayah.com/data/${reciter}/${id}.mp3`;
 
+    audio.pause();
+    audio.currentTime = 0;
+    audio.src = url;
+
     return new Promise((resolve) => {
 
         let done = false;
@@ -183,19 +187,31 @@ async function playArabicAudioSafe(id)
             resolve();
         };
 
-        // 🔥 reset
-        audio.pause();
-        audio.currentTime = 0;
-        audio.src = url;
+        audio.onended = () => {
+            console.log("ARABIC END");
+            finish();
+        };
 
-        // 🔥 DO NOT WAIT for events
-        audio.play().catch(() => finish());
+        audio.onerror = () => finish();
 
-        // 🔥 safety timeout (critical for iPhone)
-        setTimeout(finish, 18000);
+        // 🔥 IMPORTANT: wait for real playback start
+        const p = audio.play();
 
-        audio.onended = finish;
-        audio.onerror = finish;
+        if (p !== undefined)
+        {
+            p.then(() => {
+                console.log("ARABIC STARTED");
+            }).catch(() => {
+                console.log("ARABIC PLAY BLOCKED");
+                finish();
+            });
+        }
+
+        // 🔥 HARD SAFETY TIMEOUT (iPhone fallback)
+        setTimeout(() => {
+            console.warn("ARABIC TIMEOUT FORCE NEXT");
+            finish();
+        }, 20000);
     });
 }
 
