@@ -102,6 +102,7 @@ async function playAyahEngine(ayah) {
         console.log("Arabic start");
         await playArabicSafe(id);
         console.log("Arabic done");
+        await sleep(300);
     }
 
     if (settings.playEnglish) {
@@ -166,43 +167,32 @@ function initVoices() {
 function speak(text) {
     return new Promise((resolve) => {
 
-        if (!text) {
-            console.warn("Empty text passed to speak()");
-            return resolve();
-        }
-
-        speechSynthesis.cancel();
+        if (!text) return resolve();
 
         const u = new SpeechSynthesisUtterance(text);
 
         u.lang = "en-US";
-        u.rate = 0.95;   // slightly more natural
+        u.rate = 0.95;
         u.pitch = 1;
 
         const voice = voices.find(v => v.lang.includes("en"));
         if (voice) u.voice = voice;
 
-        let finished = false;
+        let done = false;
 
         const finish = () => {
-            if (finished) return;
-            finished = true;
-
-            speechSynthesis.cancel();
+            if (done) return;
+            done = true;
             resolve();
-        };
-
-        u.onstart = () => {
-            console.log("🔊 speaking started");
         };
 
         u.onend = finish;
         u.onerror = finish;
 
-        // IMPORTANT FIX: no aggressive fallback timer anymore
-        // (this was causing premature "VOICE END" in earlier versions)
-
-        speechSynthesis.speak(u);
+        // ⚠️ IMPORTANT: delay speech slightly on iOS
+        setTimeout(() => {
+            speechSynthesis.speak(u);
+        }, 120);
     });
 }
 
