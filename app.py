@@ -1,19 +1,12 @@
 from flask import Flask, render_template, jsonify, request, send_file, abort
 import sqlite3
 import os
-import edge_tts
 import asyncio
 
 
 CACHE_DIR = "static/en_audio"
 os.makedirs(CACHE_DIR, exist_ok=True)
-
-async def generate(text, path):
-    communicate = edge_tts.Communicate(text, "en-US-AriaNeural")
-    await communicate.save(path)
-
 app = Flask(__name__)
-#DB = "/Users/shabirdewji/python/phoneqr/quran.db"
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DB = os.path.join(BASE_DIR, "quran.db")
 
@@ -134,12 +127,10 @@ SURAH_NAMES = {
     114: "An-Nas"
 }
 
-
 def get_db():
     conn = sqlite3.connect(DB)
     conn.row_factory = sqlite3.Row
     return conn
-
 
 @app.route("/")
 def index():
@@ -156,7 +147,6 @@ def index():
         surahs=surahs,
         surah_names=SURAH_NAMES
     )
-
 
 @app.route("/surah/<int:surah>")
 def get_surah(surah):
@@ -175,46 +165,11 @@ def get_surah(surah):
         "ayahs": [dict(r) for r in rows]
     })
     
-def get_ayah_translation(surah, ayah):
-    try:
-        surah = int(surah)
-        ayah = int(ayah)
-
-        with sqlite3.connect(DB) as conn:
-            cursor = conn.cursor()
-            cursor.execute(
-                """
-                SELECT text
-                FROM quran
-                WHERE surah = ? AND ayah = ?
-                """,
-                (surah, ayah)
-            )
-
-            row = cursor.fetchone()
-            return row[0] if row else None
-
-    except Exception as e:
-        print("DB ERROR:", e)
-        return None
-    
-@app.route("/english/<surah>/<ayah>")
-def english_audio(surah, ayah):
-
-    path = f"static/en_audio/{surah}_{ayah}.mp3"
-
-    if not os.path.exists(path):
-        text = get_ayah_translation(surah, ayah)
-
-        asyncio.run(generate(text, path))
-
-    return send_file(path)
 
 
 @app.route("/log", methods=["POST"])
 def log():
     data = request.json
-    print("CLIENT:", data["msg"])
     return "ok"
 
 if __name__ == "__main__":

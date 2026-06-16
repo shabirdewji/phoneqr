@@ -1,10 +1,8 @@
 <!DOCTYPE html>
 <html>
 <head>
-
 <meta name="viewport"
       content="width=device-width, initial-scale=1, viewport-fit=cover">
-
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 
@@ -12,22 +10,17 @@
 
 <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 <link rel="icon" href="{{ url_for('static', filename='favicon.ico') }}">
-
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-
 </head>
-
 <body>
 
 <div class="phone">
-
     <!-- HEADER -->
     <div class="header">
         <h2>Quran Reader</h2>
     </div>
 
     <div class="content">
-
         <!-- SURAH SELECT -->
         <select id="surahSelect">
             {% for row in surahs %}
@@ -38,27 +31,19 @@
         </select>
 
 <!-- BOTTOM CONTROL BAR -->
-<div class="bottom-bar">
-
-    <button class="bar-btn" onclick="playSurah()">
-        ▶
-    </button>
-
-    <button class="bar-btn danger" onclick="stopReading()">
-        ■
-    </button>
-
-
-    <i id="gearIcon" class="gear-icon">⚙️</i>
-
-</div>
-
+        <div class="bottom-bar">
+            <button class="bar-btn" onclick="playSurah()">
+                ▶
+            </button>
+            <button class="bar-btn danger" onclick="stopReading()">
+                ■
+            </button>
+            <i id="gearIcon" class="gear-icon">⚙️</i>
+        </div>
         <!-- STATUS -->
         <div id="status"></div>
-
         <!-- AYAH DISPLAY -->
         <div id="ayahs"></div>
-
     </div>
 </div>
 
@@ -70,24 +55,9 @@
 
 <!-- ================= SETTINGS MODAL ================= -->
 <div id="settingsModal" class="modal hidden">
-
     <div class="modal-content">
-
         <h2>Settings</h2>
 
-        <label class="setting-item">
-            <input type="checkbox" id="setArabic">
-            Play Arabic
-        </label>
-
-        <br><br>
-
-        <label class="setting-item">
-            <input type="checkbox" id="setEnglish">
-            Play English
-        </label>
-
-        <br><br>
 
         <label class="setting-item">
             Reciter:
@@ -98,15 +68,13 @@
                 <option value="Minshawy_Murattal_128kbps">Minshawy</option>
             </select>
         </label>
-
+        <br>
         <label class="setting-item">
             Font Size:
             <input type="range" id="setFontSize" min="16" max="32" step="1">
             <span id="fontSizeLabel"></span>
         </label>
-
         <br><br>
-
         <div class="modal-actions">
             <button id="closeSettingsBtn">✖</button>
         </div>
